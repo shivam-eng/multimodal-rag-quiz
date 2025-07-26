@@ -1,2 +1,10 @@
-# multimodal-rag-quiz
-I'll create a comprehensive quiz covering the key topics from a multimodal search and RAG course. This will include flashcards and questions across different difficulty levels to help you test your understanding.
+# Multimodal Search & RAG Quiz
+An interactive quiz and flashcard system for testing knowledge of multimodal search and Retrieval-Augmented Generat
+
+## Features
+- 15 quiz questions across 3 difficulty levels
+- 20 interactive flashcards
+- Immediate feedback and explanations
+- Responsive design
+## Usage
+Open `index.html` in your browser or visit: https://shivam-eng.github.io/multimodal-rag-quiz
