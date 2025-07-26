@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multimodal Search and RAG Quiz</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .mode-selector {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .mode-btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+        }
+
+        .mode-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        .mode-btn.active {
+            background: linear-gradient(135deg, #764ba2, #667eea);
+            transform: scale(1.05);
+        }
+
+        .quiz-section, .flashcard-section {
+            display: none;
+        }
+
+        .quiz-section.active, .flashcard-section.active {
+            display: block;
+        }
+
+        .difficulty-selector {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .diff-btn {
+            padding: 8px 16px;
+            border: 2px solid #667eea;
+            border-radius: 20px;
+            background: white;
+            color: #667eea;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .diff-btn.active {
+            background: #667eea;
+            color: white;
+        }
+
+        .question {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            border-left: 5px solid #667eea;
+        }
+
+        .question h3 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 1.2em;
+        }
+
+        .options {
+            display: grid;
+            gap: 10px;
+            margin: 15px 0;
+        }
+
+        .option {
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: #f9f9f9;
+        }
+
+        .option:hover {
+            border-color: #667eea;
+            background: #f0f4ff;
+        }
+
+        .option.selected {
+            border-color: #667eea;
+            background: #e8f0ff;
+        }
+
+        .option.correct {
+            border-color: #4caf50;
+            background: #e8f5e8;
+        }
+
+        .option.incorrect {
+            border-color: #f44336;
+            background: #ffeaea;
+        }
+
+        .flashcard {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            min-height: 200px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .flashcard:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.15);
+        }
+
+        .flashcard.flipped {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+        }
+
+        .card-content {
+            font-size: 1.1em;
+            line-height: 1.6;
+        }
+
+        .card-front {
+            font-weight: bold;
+            font-size: 1.2em;
+        }
+
+        .navigation {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 20px 0;
+        }
+
+        .nav-btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            background: #667eea;
+            color: white;
+        }
+
+        .nav-btn:hover {
+            background: #764ba2;
+            transform: translateY(-2px);
+        }
+
+        .nav-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .progress {
+            flex-grow: 1;
+            margin: 0 20px;
+            text-align: center;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .score {
+            text-align: center;
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #333;
+            margin-top: 20px;
+        }
+
+        .flip-hint {
+            position: absolute;
+            bottom: 10px;
+            right: 15px;
+            font-size: 0.8em;
+            opacity: 0.7;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧠 Multimodal Search & RAG Quiz</h1>
+        
+        <div class="mode-selector">
+            <button class="mode-btn active" onclick="switchMode('quiz')">📝 Quiz Mode</button>
+            <button class="mode-btn" onclick="switchMode('flashcard')">🃏 Flashcard Mode</button>
+        </div>
+
+        <!-- Quiz Section -->
+        <div class="quiz-section active">
+            <div class="difficulty-selector">
+                <button class="diff-btn active" onclick="setDifficulty('easy')">Easy</button>
+                <button class="diff-btn" onclick="setDifficulty('medium')">Medium</button>
+                <button class="diff-btn" onclick="setDifficulty('hard')">Hard</button>
+            </div>
+            
+            <div id="quiz-container"></div>
+            
+            <div class="navigation">
+                <button class="nav-btn" id="prev-btn" onclick="previousQuestion()" disabled>Previous</button>
+                <div class="progress" id="progress">Question 1 of 10</div>
+                <button class="nav-btn" id="next-btn" onclick="nextQuestion()">Next</button>
+            </div>
+            
+            <div class="score" id="score"></div>
+        </div>
+
+        <!-- Flashcard Section -->
+        <div class="flashcard-section">
+            <div id="flashcard-container"></div>
+            
+            <div class="navigation">
+                <button class="nav-btn" id="prev-card" onclick="previousCard()" disabled>Previous</button>
+                <div class="progress" id="card-progress">Card 1 of 20</div>
+                <button class="nav-btn" id="next-card" onclick="nextCard()">Next</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const quizData = {
+            easy: [
+                {
+                    question: "What does RAG stand for in the context of AI systems?",
+                    options: ["Retrieval-Augmented Generation", "Retrieval-Assisted Generation", "Retrieval-Associated Generation", "Retrieval-Activated Generation"],
+                    correct: 0,
+                    explanation: "RAG stands for Retrieval-Augmented Generation, which combines information retrieval with text generation."
+                },
+                {
+                    question: "What is the primary benefit of multimodal search over text-only search?",
+                    options: ["It can process images and text together", "It only searches through images", "It searches faster than text search", "It uses less computational resources"],
+                    correct: 0,
+                    explanation: "Multimodal search allows querying across different data types like text, images, audio, and video together."
+                },
+                {
+                    question: "Which embedding model is specifically designed for both text and images?",
+                    options: ["CLIP", "BERT", "Word2Vec", "GPT"],
+                    correct: 0,
+                    explanation: "CLIP (Contrastive Language-Image Pre-training) is designed to encode both visual and textual information."
+                },
+                {
+                    question: "What is the main purpose of embeddings in search systems?",
+                    options: ["Convert data into numerical vectors for similarity comparison", "Compress data to save storage space", "Encrypt sensitive information", "Format data for display"],
+                    correct: 0,
+                    explanation: "Embeddings convert different types of data into numerical vectors that can be compared for similarity."
+                },
+                {
+                    question: "In a RAG system, what is the first step when processing a user query?",
+                    options: ["Retrieve relevant documents", "Generate a response", "Train the model", "Validate the query"],
+                    correct: 0,
+                    explanation: "The retrieval phase comes first, searching for and finding the most relevant information to answer the query."
+                }
+            ],
+            medium: [
+                {
+                    question: "What is the key advantage of CLIP over traditional computer vision models?",
+                    options: ["It creates unified text-image representations", "It processes images faster", "It requires less training data", "It works only with high-resolution images"],
+                    correct: 0,
+                    explanation: "CLIP creates a shared embedding space where text and images can be compared directly, enabling cross-modal search."
+                },
+                {
+                    question: "Which similarity metric is most commonly used for comparing embeddings?",
+                    options: ["Cosine similarity", "Euclidean distance", "Manhattan distance", "Jaccard similarity"],
+                    correct: 0,
+                    explanation: "Cosine similarity measures the angle between vectors and is widely used for embeddings as it's normalized and handles high-dimensional spaces well."
+                },
+                {
+                    question: "What is the optimal chunk size strategy for RAG systems?",
+                    options: ["Balance between context and specificity", "Always use the largest possible chunks", "Always use single sentences", "Use fixed 100-word chunks"],
+                    correct: 0,
+                    explanation: "Effective chunking balances having enough context while maintaining specificity for accurate retrieval."
+                },
+                {
+                    question: "What makes vector databases different from traditional databases?",
+                    options: ["Optimized for high-dimensional similarity search", "They store only text data", "They are faster for all operations", "They use less storage space"],
+                    correct: 0,
+                    explanation: "Vector databases are specifically optimized for storing embeddings and performing fast similarity searches in high-dimensional spaces."
+                },
+                {
+                    question: "What is the main challenge multimodal RAG solves compared to single-modal RAG?",
+                    options: ["Unified search across different data types", "Faster query processing", "Reduced computational requirements", "Better text understanding only"],
+                    correct: 0,
+                    explanation: "Multimodal RAG enables searching across different data types like text, images, and audio in a unified manner."
+                }
+            ],
+            hard: [
+                {
+                    question: "In cross-modal retrieval, what enables a text query to find relevant images?",
+                    options: ["Shared embedding space mapping", "Image-to-text translation", "Separate similarity calculations", "Keyword matching in metadata"],
+                    correct: 0,
+                    explanation: "Cross-modal retrieval works by mapping different modalities to a shared embedding space, enabling direct comparison between text and images."
+                },
+                {
+                    question: "What is the primary function of cross-attention in multimodal transformers?",
+                    options: ["Enable interaction between different modalities", "Speed up processing within modalities", "Reduce model parameters", "Handle variable input lengths"],
+                    correct: 0,
+                    explanation: "Cross-attention mechanisms allow different modalities to attend to and interact with each other, enabling better multimodal understanding."
+                },
+                {
+                    question: "What distinguishes late fusion from early fusion in multimodal systems?",
+                    options: ["Combines features after separate modality processing", "Combines features at the input layer", "Uses only the best performing modality", "Processes all modalities simultaneously"],
+                    correct: 0,
+                    explanation: "Late fusion processes each modality separately with dedicated encoders and combines the representations at a later stage."
+                },
+                {
+                    question: "How does contrastive learning help in multimodal alignment?",
+                    options: ["Pulls similar cross-modal pairs together, pushes dissimilar apart", "Translates between modalities", "Reduces dimensionality of embeddings", "Increases training speed"],
+                    correct: 0,
+                    explanation: "Contrastive learning aligns different modalities by learning to bring similar cross-modal pairs closer and push dissimilar pairs apart in the embedding space."
+                },
+                {
+                    question: "What is the main evaluation challenge for multimodal RAG systems?",
+                    options: ["Measuring relevance across and within different modalities", "Calculating simple accuracy metrics", "Measuring only retrieval speed", "Evaluating generation quality alone"],
+                    correct: 0,
+                    explanation: "Multimodal systems require complex evaluation metrics that capture relevance both within individual modalities and across different modalities."
+                }
+            ]
+        };
+
+        const flashcards = [
+            { front: "What is RAG?", back: "Retrieval-Augmented Generation - a technique that combines information retrieval with text generation to produce more accurate and contextual responses." },
+            { front: "What is CLIP?", back: "Contrastive Language-Image Pre-training - a model that learns visual concepts from natural language supervision, creating unified text-image embeddings." },
+            { front: "What is an embedding?", back: "A numerical vector representation of data (text, images, etc.) that captures semantic meaning and enables similarity comparisons." },
+            { front: "What is chunking?", back: "The process of breaking large documents into smaller, manageable pieces that can be individually embedded and retrieved." },
+            { front: "What is cosine similarity?", back: "A metric that measures the cosine of the angle between two vectors, commonly used to determine similarity between embeddings." },
+            { front: "What is a vector database?", back: "A specialized database optimized for storing high-dimensional vectors (embeddings) and performing fast similarity searches." },
+            { front: "What is cross-modal retrieval?", back: "The ability to search across different data types - for example, using text queries to find relevant images or vice versa." },
+            { front: "What is multimodal fusion?", back: "The process of combining information from different modalities (text, images, audio) to create unified representations or decisions." },
+            { front: "What is contrastive learning?", back: "A training approach that learns representations by contrasting positive pairs (similar items) with negative pairs (dissimilar items)." },
+            { front: "What is early vs late fusion?", back: "Early fusion combines modalities at input level; late fusion processes modalities separately then combines results." },
+            { front: "What is attention mechanism?", back: "A technique that allows models to focus on relevant parts of input data, crucial for handling multiple modalities effectively." },
+            { front: "What is zero-shot retrieval?", back: "The ability to retrieve relevant content for queries or modalities not seen during training." },
+            { front: "What is semantic search?", back: "Search based on meaning and context rather than exact keyword matching, enabled by embedding representations." },
+            { front: "What is modality alignment?", back: "The process of ensuring different types of data (text, images) are mapped to comparable spaces in the embedding." },
+            { front: "What is dense retrieval?", back: "Using dense vector representations (embeddings) for retrieval, as opposed to sparse methods like TF-IDF." },
+            { front: "What is the embedding space?", back: "A high-dimensional vector space where similar items are located close to each other based on semantic meaning." },
+            { front: "What is fine-tuning in RAG?", back: "Adapting pre-trained models to specific domains or tasks to improve retrieval and generation performance." },
+            { front: "What is passage ranking?", back: "The process of scoring and ordering retrieved documents or passages by their relevance to the query." },
+            { front: "What is multimodal grounding?", back: "Connecting language to other modalities, understanding how words relate to visual or audio content." },
+            { front: "What is retrieval augmentation?", back: "Enhancing generation models by providing them with relevant external information retrieved from knowledge bases." }
+        ];
+
+        let currentQuestionIndex = 0;
+        let currentDifficulty = 'easy';
+        let currentQuestions = quizData.easy;
+        let userAnswers = [];
+        let currentCardIndex = 0;
+        let currentMode = 'quiz';
+
+        function switchMode(mode) {
+            currentMode = mode;
+            document.querySelectorAll('.mode-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            if (mode === 'quiz') {
+                document.querySelector('.quiz-section').classList.add('active');
+                document.querySelector('.flashcard-section').classList.remove('active');
+                loadQuestion();
+            } else {
+                document.querySelector('.flashcard-section').classList.add('active');
+                document.querySelector('.quiz-section').classList.remove('active');
+                loadFlashcard();
+            }
+        }
+
+        function setDifficulty(difficulty) {
+            currentDifficulty = difficulty;
+            currentQuestions = quizData[difficulty];
+            currentQuestionIndex = 0;
+            userAnswers = [];
+            
+            document.querySelectorAll('.diff-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            loadQuestion();
+        }
+
+        function loadQuestion() {
+            const question = currentQuestions[currentQuestionIndex];
+            const container = document.getElementById('quiz-container');
+            
+            container.innerHTML = `
+                <div class="question">
+                    <h3>Question ${currentQuestionIndex + 1}</h3>
+                    <p>${question.question}</p>
+                    <div class="options">
+                        ${question.options.map((option, index) => 
+                            `<div class="option" onclick="selectOption(${index})">${option}</div>`
+                        ).join('')}
+                    </div>
+                    <div id="explanation" style="margin-top: 15px; padding: 15px; background: #f0f8ff; border-radius: 10px; display: none;">
+                        <strong>Explanation:</strong> ${question.explanation}
+                    </div>
+                </div>
+            `;
+            
+            updateProgress();
+            updateNavigationButtons();
+        }
+
+        function selectOption(selectedIndex) {
+            const options = document.querySelectorAll('.option');
+            const question = currentQuestions[currentQuestionIndex];
+            
+            // Remove previous selections
+            options.forEach(option => {
+                option.classList.remove('selected', 'correct', 'incorrect');
+            });
+            
+            // Mark selected option
+            options[selectedIndex].classList.add('selected');
+            
+            // Show correct/incorrect
+            options[question.correct].classList.add('correct');
+            if (selectedIndex !== question.correct) {
+                options[selectedIndex].classList.add('incorrect');
+            }
+            
+            // Store answer
+            userAnswers[currentQuestionIndex] = selectedIndex;
+            
+            // Show explanation
+            document.getElementById('explanation').style.display = 'block';
+            
+            // Update score
+            updateScore();
+        }
+
+        function updateProgress() {
+            document.getElementById('progress').textContent = 
+                `Question ${currentQuestionIndex + 1} of ${currentQuestions.length}`;
+        }
+
+        function updateNavigationButtons() {
+            document.getElementById('prev-btn').disabled = currentQuestionIndex === 0;
+            document.getElementById('next-btn').disabled = currentQuestionIndex === currentQuestions.length - 1;
+        }
+
+        function nextQuestion() {
+            if (currentQuestionIndex < currentQuestions.length - 1) {
+                currentQuestionIndex++;
+                loadQuestion();
+            }
+        }
+
+        function previousQuestion() {
+            if (currentQuestionIndex > 0) {
+                currentQuestionIndex--;
+                loadQuestion();
+            }
+        }
+
+        function updateScore() {
+            let correct = 0;
+            userAnswers.forEach((answer, index) => {
+                if (answer === currentQuestions[index].correct) {
+                    correct++;
+                }
+            });
+            
+            const scoreElement = document.getElementById('score');
+            const percentage = Math.round((correct / userAnswers.length) * 100);
+            scoreElement.innerHTML = `Score: ${correct}/${userAnswers.length} (${percentage}%)`;
+        }
+
+        function loadFlashcard() {
+            const card = flashcards[currentCardIndex];
+            const container = document.getElementById('flashcard-container');
+            
+            container.innerHTML = `
+                <div class="flashcard" onclick="flipCard()">
+                    <div class="card-content">
+                        <div class="card-front">${card.front}</div>
+                    </div>
+                    <div class="flip-hint">Click to flip</div>
+                </div>
+            `;
+            
+            updateCardProgress();
+            updateCardNavigation();
+        }
+
+        function flipCard() {
+            const flashcard = document.querySelector('.flashcard');
+            const cardContent = document.querySelector('.card-content');
+            const card = flashcards[currentCardIndex];
+            
+            if (!flashcard.classList.contains('flipped')) {
+                flashcard.classList.add('flipped');
+                cardContent.innerHTML = `<div>${card.back}</div>`;
+                document.querySelector('.flip-hint').textContent = 'Click to flip back';
+            } else {
+                flashcard.classList.remove('flipped');
+                cardContent.innerHTML = `<div class="card-front">${card.front}</div>`;
+                document.querySelector('.flip-hint').textContent = 'Click to flip';
+            }
+        }
+
+        function updateCardProgress() {
+            document.getElementById('card-progress').textContent = 
+                `Card ${currentCardIndex + 1} of ${flashcards.length}`;
+        }
+
+        function updateCardNavigation() {
+            document.getElementById('prev-card').disabled = currentCardIndex === 0;
+            document.getElementById('next-card').disabled = currentCardIndex === flashcards.length - 1;
+        }
+
+        function nextCard() {
+            if (currentCardIndex < flashcards.length - 1) {
+                currentCardIndex++;
+                loadFlashcard();
+            }
+        }
+
+        function previousCard() {
+            if (currentCardIndex > 0) {
+                currentCardIndex--;
+                loadFlashcard();
+            }
+        }
+
+        // Initialize
+        loadQuestion();
+    </script>
+</body>
+</html>
